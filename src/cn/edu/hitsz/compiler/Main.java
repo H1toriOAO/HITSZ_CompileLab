@@ -8,6 +8,7 @@ import cn.edu.hitsz.compiler.parser.ProductionCollector;
 import cn.edu.hitsz.compiler.parser.SemanticAnalyzer;
 import cn.edu.hitsz.compiler.parser.SyntaxAnalyzer;
 import cn.edu.hitsz.compiler.parser.table.GrammarInfo;
+import cn.edu.hitsz.compiler.parser.table.TableGenerator;
 import cn.edu.hitsz.compiler.parser.table.TableLoader;
 import cn.edu.hitsz.compiler.symtab.SymbolTable;
 import cn.edu.hitsz.compiler.utils.FilePathConfig;
@@ -33,8 +34,7 @@ public class Main {
         // 读取第三方程序构造的 LR 分析表
         final var tableLoader = new TableLoader();
         final var lrTable = tableLoader.load(FilePathConfig.LR1_TABLE_PATH);
-
-        // // 或使用框架自带部分直接从 grammar.txt 构造 LR 分析表
+        // 或使用框架自带部分直接从 grammar.txt 构造 LR 分析表
         // final var tableGenerator = new TableGenerator();
         // tableGenerator.run();
         // final var lrTable = tableGenerator.getTable();

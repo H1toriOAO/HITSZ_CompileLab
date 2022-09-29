@@ -1,0 +1,112 @@
+0: 
+    P ->  . S_list
+    S_list ->  . S Semicolon S_list
+    S_list ->  . S Semicolon
+    S ->  . D id
+    S ->  . id = E
+    S ->  . return E
+    D ->  . int
+1: 
+    S_list ->  S . Semicolon S_list
+    S_list ->  S . Semicolon
+2: 
+    S ->  D . id
+3: 
+    P ->  S_list .
+4: 
+    D ->  int .
+5: 
+    S ->  id . = E
+6: 
+    S ->  return . E
+    E ->  . E + A
+    E ->  . E - A
+    E ->  . A
+    A ->  . A * B
+    A ->  . B
+    B ->  . ( E )
+    B ->  . id
+    B ->  . IntConst
+7: 
+    S_list ->  S Semicolon .
+    S_list ->  S Semicolon . S_list
+    S_list ->  . S Semicolon S_list
+    S_list ->  . S Semicolon
+    S ->  . D id
+    S ->  . id = E
+    S ->  . return E
+    D ->  . int
+8: 
+    S ->  D id .
+9: 
+    S ->  id = . E
+    E ->  . E + A
+    E ->  . E - A
+    E ->  . A
+    A ->  . A * B
+    A ->  . B
+    B ->  . ( E )
+    B ->  . id
+    B ->  . IntConst
+10: 
+    A ->  A . * B
+    E ->  A .
+11: 
+    A ->  B .
+12: 
+    E ->  E . - A
+    E ->  E . + A
+    S ->  return E .
+13: 
+    B ->  ( . E )
+    E ->  . E + A
+    E ->  . E - A
+    E ->  . A
+    A ->  . A * B
+    A ->  . B
+    B ->  . ( E )
+    B ->  . id
+    B ->  . IntConst
+14: 
+    B ->  IntConst .
+15: 
+    B ->  id .
+16: 
+    S_list ->  S Semicolon S_list .
+17: 
+    E ->  E . - A
+    E ->  E . + A
+    S ->  id = E .
+18: 
+    A ->  A * . B
+    B ->  . ( E )
+    B ->  . id
+    B ->  . IntConst
+19: 
+    E ->  E + . A
+    A ->  . A * B
+    A ->  . B
+    B ->  . ( E )
+    B ->  . id
+    B ->  . IntConst
+20: 
+    E ->  E - . A
+    A ->  . A * B
+    A ->  . B
+    B ->  . ( E )
+    B ->  . id
+    B ->  . IntConst
+21: 
+    B ->  ( E . )
+    E ->  E . - A
+    E ->  E . + A
+22: 
+    A ->  A * B .
+23: 
+    A ->  A . * B
+    E ->  E + A .
+24: 
+    A ->  A . * B
+    E ->  E - A .
+25: 
+    B ->  ( E ) .

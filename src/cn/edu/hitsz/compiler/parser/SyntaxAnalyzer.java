@@ -1,6 +1,5 @@
 package cn.edu.hitsz.compiler.parser;
 
-import cn.edu.hitsz.compiler.NotImplementedException;
 import cn.edu.hitsz.compiler.lexer.Token;
 import cn.edu.hitsz.compiler.lexer.TokenKind;
 import cn.edu.hitsz.compiler.parser.table.*;
@@ -27,7 +26,6 @@ public class SyntaxAnalyzer {
     private LRTable table;
     private Stack<Status> statusStack = new Stack<>();
     private Stack<Term> termStack = new Stack<>();
-
 
     public SyntaxAnalyzer(SymbolTable symbolTable) {
         this.symbolTable = symbolTable;

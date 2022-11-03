@@ -1,9 +1,14 @@
 package cn.edu.hitsz.compiler.asm;
 
-import cn.edu.hitsz.compiler.NotImplementedException;
+import cn.edu.hitsz.compiler.ir.IRImmediate;
+import cn.edu.hitsz.compiler.ir.IRVariable;
 import cn.edu.hitsz.compiler.ir.Instruction;
+import cn.edu.hitsz.compiler.utils.FileUtils;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 
 /**
@@ -21,6 +26,9 @@ import java.util.List;
  * @see AssemblyGenerator#run() 代码生成与寄存器分配
  */
 public class AssemblyGenerator {
+    private List<Instruction> originInstructions = new ArrayList<>();
+    private final List<String> asmInstructions = new ArrayList<>();
+    private final Map<Integer, IRVariable> regMap = new HashMap<>();
 
     /**
      * 加载前端提供的中间代码
@@ -31,8 +39,27 @@ public class AssemblyGenerator {
      * @param originInstructions 前端提供的中间代码
      */
     public void loadIR(List<Instruction> originInstructions) {
-        // TODO: 读入前端提供的中间代码并生成所需要的信息
-        throw new NotImplementedException();
+        this.originInstructions = originInstructions;
+    }
+
+    private int findReg(IRVariable reg) throws Exception {
+        if (regMap.containsValue(reg)) {
+            for (int i = 0; i <= 6; i++) {
+                if (regMap.containsKey(i) && regMap.get(i).equals(reg)) {
+                    return i;
+                }
+            }
+        } else {
+            for (int i = 0; i <= 6; i++) {
+                if (!regMap.containsKey(i)) {
+                    regMap.put(i, reg);
+
+                    return i;
+                }
+            }
+        }
+
+        throw new Exception("No Empty Reg");
     }
 
 
@@ -46,8 +73,232 @@ public class AssemblyGenerator {
      * 成前完成建立, 与代码生成的过程相关的信息可自行设计数据结构进行记录并动态维护.
      */
     public void run() {
-        // TODO: 执行寄存器分配与代码生成
-        throw new NotImplementedException();
+        for (var inst : originInstructions) {
+            int regResult, regLHS, regRHS;
+            switch(inst.getKind()) {
+                case MOV -> {
+                    if (inst.getFrom().isImmediate()) {
+                        try {
+                            regResult = findReg(inst.getResult());
+                        } catch(Exception e) {
+                            e.printStackTrace();
+
+                            return;
+                        }
+
+                        asmInstructions.add("li t" + regResult + ", " + ((IRImmediate)inst.getFrom()).getValue());
+                    } else {
+                        try {
+                            regLHS = findReg((IRVariable)inst.getFrom());
+                            regResult = findReg(inst.getResult());
+                        } catch(Exception e) {
+                            e.printStackTrace();
+
+                            return;
+                        }
+
+                        asmInstructions.add("mv t" + regResult + ", t" + regLHS);
+                        if (((IRVariable) inst.getFrom()).isTemp()) {
+                            regMap.remove(regLHS);
+                        }
+                    }
+                }
+                case ADD -> {
+                    if (inst.getLHS().isImmediate() && inst.getRHS().isImmediate()) {
+                        try {
+                            regResult = findReg(inst.getResult());
+                        } catch(Exception e) {
+                            e.printStackTrace();
+
+                            return;
+                        }
+
+                        IRImmediate lhs = (IRImmediate)inst.getLHS(), rhs = (IRImmediate)inst.getRHS();
+                        asmInstructions.add("li t" + regResult + ", " + (lhs.getValue() + rhs.getValue()));
+                    } else if (inst.getLHS().isImmediate() || inst.getRHS().isImmediate()) {
+                        int rhsValue;
+                        IRVariable lhs;
+                        if (inst.getLHS().isImmediate()) {
+                            rhsValue = ((IRImmediate)inst.getLHS()).getValue();
+                        } else {
+                            rhsValue = ((IRImmediate)inst.getRHS()).getValue();
+                        }
+                        lhs = (IRVariable)inst.getRHS();
+
+                        try {
+                            regResult = findReg(inst.getResult());
+                            regLHS = findReg(lhs);
+                        } catch(Exception e) {
+                            e.printStackTrace();
+
+                            return;
+                        }
+
+                        asmInstructions.add("addi t" + regResult + ", t" + regLHS + ", " + rhsValue);
+
+                        if (lhs.isTemp()) {
+                            regMap.remove(regLHS);
+                        }
+                    } else {
+                        try {
+                            regResult = findReg(inst.getResult());
+                            regLHS = findReg((IRVariable) inst.getLHS());
+                            regRHS = findReg((IRVariable) inst.getRHS());
+                        } catch(Exception e) {
+                            e.printStackTrace();
+
+                            return;
+                        }
+
+                        asmInstructions.add("add t" + regResult + ", t" + regLHS + ", t" + regRHS);
+                        if (((IRVariable) inst.getLHS()).isTemp()) {
+                            regMap.remove(regLHS);
+                        }
+                        if (((IRVariable) inst.getRHS()).isTemp()) {
+                            regMap.remove(regRHS);
+                        }
+                    }
+                }
+                case SUB -> {
+                    if (inst.getLHS().isImmediate() && inst.getRHS().isImmediate()) {
+                        try {
+                            regResult = findReg(inst.getResult());
+                        } catch(Exception e) {
+                            e.printStackTrace();
+
+                            return;
+                        }
+
+                        IRImmediate lhs = (IRImmediate)inst.getLHS(), rhs = (IRImmediate)inst.getRHS();
+                        asmInstructions.add("li t" + regResult + ", " + (lhs.getValue() - rhs.getValue()));
+                    } else if (inst.getRHS().isImmediate()) {
+                        try {
+                            regResult = findReg(inst.getResult());
+                            regLHS = findReg((IRVariable) inst.getLHS());
+                        } catch(Exception e) {
+                            e.printStackTrace();
+
+                            return;
+                        }
+
+                        asmInstructions.add("subi t" + regResult + ", t" + regLHS + ", " + ((IRImmediate)inst.getRHS()).getValue());
+
+                        if (((IRVariable) inst.getLHS()).isTemp()) {
+                            regMap.remove(regLHS);
+                        }
+                    } else if (inst.getLHS().isImmediate()) {
+                        int regTemp;
+                        try {
+                            regTemp = findReg(IRVariable.temp());
+                            regResult = findReg(inst.getResult());
+                            regRHS = findReg((IRVariable) inst.getRHS());
+                        } catch(Exception e) {
+                            e.printStackTrace();
+
+                            return;
+                        }
+
+                        asmInstructions.add("li t" + regTemp + ", " + ((IRImmediate) inst.getLHS()).getValue());
+                        asmInstructions.add("sub t" + regResult + ", t" + regTemp + ", t" + regRHS);
+
+                        regMap.remove(regTemp);
+                        if (((IRVariable) inst.getRHS()).isTemp()) {
+                            regMap.remove(regRHS);
+                        }
+                    } else {
+                        try {
+                            regResult = findReg(inst.getResult());
+                            regLHS = findReg((IRVariable) inst.getLHS());
+                            regRHS = findReg((IRVariable) inst.getRHS());
+                        } catch(Exception e) {
+                            e.printStackTrace();
+
+                            return;
+                        }
+
+                        asmInstructions.add("sub t" + regResult + ", t" + regLHS + ", t" + regRHS);
+                        if (((IRVariable) inst.getLHS()).isTemp()) {
+                            regMap.remove(regLHS);
+                        }
+                        if (((IRVariable) inst.getRHS()).isTemp()) {
+                            regMap.remove(regRHS);
+                        }
+                    }
+                }
+                case MUL -> {
+                    if (inst.getLHS().isImmediate() && inst.getRHS().isImmediate()) {
+                        try {
+                            regResult = findReg(inst.getResult());
+                        } catch(Exception e) {
+                            e.printStackTrace();
+
+                            return;
+                        }
+
+                        IRImmediate lhs = (IRImmediate)inst.getLHS(), rhs = (IRImmediate)inst.getRHS();
+                        asmInstructions.add("li t" + regResult + ", " + (lhs.getValue() * rhs.getValue()));
+                    } else if (inst.getLHS().isImmediate() || inst.getRHS().isImmediate()) {
+                        IRVariable lhs;
+                        IRImmediate rhs;
+                        if (inst.getLHS().isImmediate()) {
+                            lhs = (IRVariable) inst.getRHS();
+                            rhs = (IRImmediate) inst.getLHS();
+                        } else {
+                            lhs = (IRVariable) inst.getLHS();
+                            rhs = (IRImmediate) inst.getRHS();
+                        }
+
+                        int regTemp;
+                        try {
+                            regTemp = findReg(IRVariable.temp());
+                            regResult = findReg(inst.getResult());
+                            regLHS = findReg(lhs);
+                        } catch(Exception e) {
+                            e.printStackTrace();
+
+                            return;
+                        }
+
+                        asmInstructions.add("li t" + regTemp + ", " + rhs.getValue());
+                        asmInstructions.add("mul t" + regResult + ", t" + regLHS + ", t" + regTemp);
+
+                        regMap.remove(regTemp);
+
+                        if (lhs.isTemp()) {
+                            regMap.remove(regLHS);
+                        }
+                    } else {
+                        try {
+                            regResult = findReg(inst.getResult());
+                            regLHS = findReg((IRVariable) inst.getLHS());
+                            regRHS = findReg((IRVariable) inst.getRHS());
+                        } catch(Exception e) {
+                            e.printStackTrace();
+
+                            return;
+                        }
+
+                        asmInstructions.add("mul t" + regResult + ", t" + regLHS + ", t" + regRHS);
+                        if (((IRVariable) inst.getLHS()).isTemp()) {
+                            regMap.remove(regLHS);
+                        }
+                        if (((IRVariable) inst.getRHS()).isTemp()) {
+                            regMap.remove(regRHS);
+                        }
+                    }
+                }
+                case RET -> {
+                    try {
+                        regLHS = findReg((IRVariable) inst.getReturnValue());
+                    } catch(Exception e) {
+                        e.printStackTrace();
+
+                        return;
+                    }
+                    asmInstructions.add("mv a0, t" + regLHS);
+                }
+            }
+        }
     }
 
 
@@ -57,8 +308,7 @@ public class AssemblyGenerator {
      * @param path 输出文件路径
      */
     public void dump(String path) {
-        // TODO: 输出汇编代码到文件
-        throw new NotImplementedException();
+        FileUtils.writeLines(path, asmInstructions);
     }
 }
 
